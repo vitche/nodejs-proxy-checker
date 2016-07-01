@@ -1,28 +1,54 @@
 var q = require('q');
 var request = require("request");
-module.exports = function (proxies, testUrl, callback) {
+
+function ProxyChecker() {
+    this.rules = [];
+    this.checkPromises = [];
+}
+
+ProxyChecker.prototype.check = function(proxies, testUrl, callback) {
     var self = this;
     // Check one proxy
-    self.checkProxy = function (proxy, testUrl, callback) {
+    self.checkProxy = function(proxy, testUrl, callback) {
         request({
             uri: testUrl,
             proxy: proxy,
             timeout: 15000
-        }, function (error, response, body) {
+        }, function(error, response, body) {
             if (error) {
                 callback(error);
-            } else if (200 == response.statusCode) {
-                callback(undefined, proxy);
             } else {
-                callback(new Error('HTTP ' + response.statusCode));
+                if (undefined != this.rules) {
+                    var promises = [];
+                    self.rules.forEach(function(item) {
+                        promises.push(q.Promise(function(resolve, reject) {
+                            item(response, function(error) {
+                                if (error != undefined) {
+                                    reject(error);
+                                } else {
+                                    resolve();
+                                }
+                            });
+                        }));
+                    });
+                    q.all(promises).then(function(result) {
+                        callback(undefined, proxy);
+                    }).catch(function(error) {
+                        callback(error);
+                    });
+
+                } else if (200 == response.statusCode) {
+                    callback(undefined, proxy);
+                } else {
+                    callback(new Error('HTTP ' + response.statusCode));
+                }
             }
         });
     };
     // The list of check promises
-    var checkPromises = [];
-    proxies.forEach(function (proxy) {
-        checkPromises.push(q.Promise(function (resolve, reject) {
-            self.checkProxy(proxy.address, testUrl, function (error, proxy) {
+    proxies.forEach(function(proxy) {
+        self.checkPromises.push(q.Promise(function(resolve, reject) {
+            self.checkProxy(proxy.address, testUrl, function(error, proxy) {
                 if (undefined != error) {
                     reject(error);
                     return;
@@ -31,7 +57,7 @@ module.exports = function (proxies, testUrl, callback) {
             });
         }));
     });
-    q.allSettled(checkPromises).then(function (checkedProxies) {
+    q.allSettled(self.checkPromises).then(function(checkedProxies) {
         for (var i = 0; i < checkedProxies.length; i++) {
             var checkedProxy = checkedProxies[i];
             proxies[i].alive = "fulfilled" == checkedProxy.state;
@@ -39,3 +65,13 @@ module.exports = function (proxies, testUrl, callback) {
         callback(null, proxies);
     });
 };
+
+ProxyChecker.prototype.addRule = function(rule) {
+    if (typeof(rule) == "function") {
+        this.rules.push(rule);
+    } else {
+        throw new Error('Rule must be a function');
+    }
+};
+
+module.exports = ProxyChecker;
