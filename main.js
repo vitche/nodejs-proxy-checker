@@ -19,7 +19,7 @@ ProxyChecker.prototype.check = function(proxies, testUrl, callback) {
             if (error) {
                 callback(error);
             } else {
-                if (undefined != this.rules) {
+                if (undefined != self.rules) {
                     var promises = [];
                     self.rules.forEach(function(item) {
                         promises.push(q.Promise(function(resolve, reject) {
