@@ -8,6 +8,7 @@ function ProxyChecker() {
 
 ProxyChecker.prototype.check = function(proxies, testUrl, callback) {
     var self = this;
+    self.checkPromises = [];
     // Check one proxy
     self.checkProxy = function(proxy, testUrl, callback) {
         request({
