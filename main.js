@@ -67,7 +67,7 @@ ProxyChecker.prototype.check = function (proxies, testUrl, callback) {
     q.allSettled(self.checkPromises).then(function (checkedProxies) {
         for (var i = 0; i < checkedProxies.length; i++) {
             var checkedProxy = checkedProxies[i];
-            proxies[i].active = "fulfilled" == checkedProxy.state;
+            proxies[i].valid = "fulfilled" == checkedProxy.state;
         }
         callback(null, proxies);
     });
