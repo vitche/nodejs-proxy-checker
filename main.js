@@ -55,7 +55,11 @@ ProxyChecker.prototype.check = function (proxies, testUrl, callback) {
     // The list of check promises
     proxies.forEach(function (proxy) {
         self.checkPromises.push(q.Promise(function (resolve, reject) {
-            self.checkProxy(proxy.address, testUrl, function (error, proxy) {
+            var address = proxy.address;
+            if (!address && 3 == proxy.type) {
+                address = 'socks://' + proxy.ipv4 + ':' + proxy.port;
+            }
+            self.checkProxy(address, testUrl, function (error, proxy) {
                 if (undefined != error) {
                     reject(error);
                     return;
