@@ -45,7 +45,7 @@ ProxyChecker.prototype.check = function (proxies, testUrl, callback) {
             if (error) {
                 callback(error);
             } else {
-                if (undefined != self.rules) {
+                if (0 < self.rules.length) {
                     var promises = [];
                     self.rules.forEach(function (item) {
                         promises.push(q.Promise(function (resolve, reject) {
