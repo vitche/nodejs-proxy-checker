@@ -1,4 +1,6 @@
 var q = require('q');
+var httpAgent = require('socks5-http-client/lib/Agent');
+var httpsAgent = require('socks5-https-client/lib/Agent');
 
 // TODO: Check whether performance of this library is better than of the default HTTP / HTTPS library
 // TODO: It is possible that the HTTP request must be a part of the validation rule. We may wish to check proxies not for HTTP resources.
@@ -14,14 +16,32 @@ ProxyChecker.prototype.check = function (proxies, testUrl, callback) {
     self.checkPromises = [];
     // Check one proxy
     self.checkProxy = function (proxy, testUrl, callback) {
-
-        // TODO: Making an HTTP request all together looks more like a rule and not like a common algorithm.
-        request({
+        var query = {
             uri: testUrl,
-            proxy: proxy,
             // TODO: Think about whether it is bigger than necessary
             timeout: 15000
-        }, function (error, response, body) {
+        };
+        if (proxy instanceof Object && 3 == proxy.type) {
+
+            // SOCKS proxy
+            if (testUrl.lastIndexOf('https://', 0) === 0) {
+                // HTTPS
+                query.agentClass = httpsAgent;
+            } else {
+                // HTTP
+                query.agentClass = httpAgent;
+            }
+
+            query.agentOptions = {
+                socksHost: proxy.ipv4,
+                socksPort: proxy.port
+            };
+        } else if (proxy instanceof String) {
+            // Proxy can be just a string address of a proxy
+            query.proxy = proxy;
+        }
+        // TODO: Making an HTTP request all together looks more like a rule and not like a common algorithm.
+        request(query, function (error, response, body) {
             if (error) {
                 callback(error);
             } else {
@@ -55,11 +75,7 @@ ProxyChecker.prototype.check = function (proxies, testUrl, callback) {
     // The list of check promises
     proxies.forEach(function (proxy) {
         self.checkPromises.push(q.Promise(function (resolve, reject) {
-            var address = proxy.address;
-            if (!address && 3 == proxy.type) {
-                address = 'socks://' + proxy.ipv4 + ':' + proxy.port;
-            }
-            self.checkProxy(address, testUrl, function (error, proxy) {
+            self.checkProxy(proxy, testUrl, function (error, proxy) {
                 if (undefined != error) {
                     reject(error);
                     return;

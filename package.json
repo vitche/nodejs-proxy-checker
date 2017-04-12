@@ -3,9 +3,6 @@
   "version": "2.1.0",
   "description": "",
   "main": "main.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/ToruHyuga/nodejs-proxy-checker.git"
@@ -21,6 +18,8 @@
   "homepage": "https://github.com/ToruHyuga/nodejs-proxy-checker#readme",
   "dependencies": {
     "q": "^1.4.1",
-    "request": "^2.72.0"
+    "request": "^2.72.0",
+    "socks5-http-client": "^1.0.2",
+    "socks5-https-client": "^1.2.0"
   }
 }
