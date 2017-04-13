@@ -58,55 +58,46 @@ RuleChecker.prototype.addRule = function (rule) {
         throw new Error('Proxy checkList rule must be a function');
     }
 };
+function _socks5Rule(request, parameters, callback) {
+    var parsedUrl = url.parse(parameters.testUrl);
+    var query = {
+        hostname: parsedUrl.hostname,
+        socksHost: parameters.proxy.ipv4,
+        socksPort: parameters.proxy.port
+    };
+    var connection = request
+        .get(query, function (response) {
+            var status = response.statusCode;
+            if (200 == status || 302 == status) {
+                callback(undefined, arguments.proxy);
+            } else {
+                callback(new Error('HTTP/(S) ' + response.statusCode), arguments.proxy);
+            }
+        })
+        .on('error', function (error) {
+            callback(error, arguments.proxy);
+        })
+        // TODO: Think about whether it is bigger than necessary
+        .setTimeout(15000, function () {
+            callback(new Error('nodejs-proxy-checker timeout'), arguments.proxy);
+            connection.abort();
+        });
+}
 var rules = {
-    SOCKS5HTTPS: function (arguments, callback) {
-        var parsedUrl = url.parse(arguments.testUrl);
+    SOCKS5HTTPS: function (parameters, callback) {
         var request = require('socks5-https-client');
-        var query = {
-            hostname: parsedUrl.hostname,
-            socksHost: arguments.proxy.ipv4,
-            socksPort: arguments.proxy.port,
-            // TODO: Think about whether it is bigger than necessary
-            timeout: 15000
-        };
-        request.get(query, function (response) {
-            var status = response.statusCode;
-            if (200 == status || 302 == status) {
-                callback(undefined, arguments.proxy);
-            } else {
-                callback(new Error('HTTP ' + response.statusCode), arguments.proxy);
-            }
-        }).on('error', function (error) {
-            callback(error);
-        });
+        _socks5Rule(request, parameters, callback);
     },
-    SOCKS5HTTP: function (arguments, callback) {
-        var parsedUrl = url.parse(arguments.testUrl);
+    SOCKS5HTTP: function (parameters, callback) {
         var request = require('socks5-http-client');
-        var query = {
-            hostname: parsedUrl.hostname,
-            socksHost: arguments.proxy.ipv4,
-            socksPort: arguments.proxy.port,
-            // TODO: Think about whether it is bigger than necessary
-            timeout: 15000
-        };
-        request.get(query, function (response) {
-            var status = response.statusCode;
-            if (200 == status || 302 == status) {
-                callback(undefined, arguments.proxy);
-            } else {
-                callback(new Error('HTTP ' + response.statusCode), arguments.proxy);
-            }
-        }).on('error', function (error) {
-            callback(error);
-        });
+        _socks5Rule(request, parameters, callback);
     },
-    REQUEST: function (arguments, callback) {
+    REQUEST: function (parameters, callback) {
         // TODO: Check whether performance of this library is better than of the default HTTP / HTTPS library
         var request = require('request');
         var query = {
-            uri: arguments.testUrl,
-            proxy: arguments.proxy,
+            uri: parameters.testUrl,
+            proxy: parameters.proxy,
             // TODO: Think about whether it is bigger than necessary
             timeout: 15000
         };
