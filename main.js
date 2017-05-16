@@ -59,29 +59,50 @@ RuleChecker.prototype.addRule = function (rule) {
     }
 };
 function _socks5Rule(request, parameters, callback) {
+    var ended = false;
     var parsedUrl = url.parse(parameters.testUrl);
     var query = {
         hostname: parsedUrl.hostname,
         socksHost: parameters.proxy.ipv4,
-        socksPort: parameters.proxy.port
+        socksPort: parameters.proxy.port,
+        path: parsedUrl.path
     };
+    if (parameters.headers){
+        query.headers = parameters.headers;
+    }
     var connection = request
         .get(query, function (response) {
             var status = response.statusCode;
             if (200 == status || 302 == status) {
-                callback(undefined, arguments.proxy);
+                var body = '';
+                response.on('data', function (chunk) {
+                    body += chunk;
+                });
+                response.on('end', function () {
+                    ended = true;
+                    response.body = body;
+                    callback(undefined, parameters.proxy, response);
+                });
             } else {
-                callback(new Error('HTTP/(S) ' + response.statusCode), arguments.proxy);
+                callback(new Error('HTTP/(S) ' + response.statusCode), parameters.proxy, response);
             }
         })
         .on('error', function (error) {
-            callback(error, arguments.proxy);
+            callback(error, parameters.proxy);
         })
         // TODO: Think about whether it is bigger than necessary
         .setTimeout(15000, function () {
-            callback(new Error('nodejs-proxy-checker timeout'), arguments.proxy);
+            callback(new Error('nodejs-proxy-checker timeout'), parameters.proxy);
             connection.abort();
         });
+    // End this rule by timeout
+    setTimeout(function() {
+        if (ended) {
+            return;
+        }
+        callback(new Error('Rule timeout'), parameters.proxy);
+        connection.abort();
+    }, 22000);
 }
 var rules = {
     SOCKS5HTTPS: function (parameters, callback) {
